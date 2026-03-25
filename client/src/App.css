@@ -1,0 +1,170 @@
+/* ============================================================
+   App.css — Page-level layout styles
+   Design system tokens are defined in index.css
+   ============================================================ */
+@import "tailwindcss";
+/* ── App Shell ── */
+.app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100svh;
+    background-color: var(--bg);
+}
+
+/* ── Main Content Area ── */
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Page Wrapper (centered container with padding) ── */
+.page {
+    width: 100%;
+    max-width: var(--container-max);
+    margin-inline: auto;
+    padding-inline: var(--container-pad);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Hero Page Layout ── */
+.hero-page {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.hero-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: var(--space-16);
+    min-height: calc(90svh - var(--navbar-height));
+    padding-block: var(--space-16);
+    width: 100%;
+    max-width: var(--container-max);
+    margin-inline: auto;
+    padding-inline: var(--container-pad);
+}
+
+/* ── Section Dividers ── */
+.section-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+}
+
+/* ── Ticker Section ── */
+.ticker-section {
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+}
+
+/* ── Connected State ── */
+.connected-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    background: rgba(184, 254, 102, 0.1);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-6);
+}
+
+.connected-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--radius-full);
+    background: var(--primary);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px var(--primary-muted);
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%,
+    100% {
+        box-shadow: 0 0 0 3px var(--primary-muted);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(184, 254, 102, 0.08);
+    }
+}
+
+/* ── Stats Row ── */
+.stats-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+    margin-top: var(--space-8);
+}
+
+.stat-item {
+    flex: 1;
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    border-right: 1px solid var(--border);
+}
+
+.stat-item:last-child {
+    border-right: none;
+}
+
+.stat-value {
+    font-size: var(--text-3xl);
+    font-weight: var(--font-black);
+    letter-spacing: var(--tracking-tight);
+    color: var(--black);
+    line-height: 1;
+}
+
+.stat-value.accent {
+    color: transparent;
+    background: linear-gradient(135deg, #7ac800 0%, var(--primary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.stat-label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--text-secondary);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+    .hero-section {
+        grid-template-columns: 1fr;
+        gap: var(--space-10);
+        min-height: unset;
+        padding-block: var(--space-12);
+    }
+
+    .stats-row {
+        flex-direction: column;
+    }
+
+    .stat-item {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .hero-section {
+        padding-block: var(--space-8);
+        gap: var(--space-8);
+    }
+}
