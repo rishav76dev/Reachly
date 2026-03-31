@@ -14,8 +14,6 @@ export function AddSubmissionForm({
   submitHint,
   onAdd,
 }: Props) {
-  const validationProcessUrl =
-    "https://reachly-git-feat-twitter-validation-rishavs-projects-f2c32f67.vercel.app/";
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
 
@@ -93,26 +91,6 @@ export function AddSubmissionForm({
               Distribution is finalized — no new submissions accepted.
             </p>
           )}
-          <p style={{ fontSize: 12, color: "#dc2626", marginTop: 8, fontWeight: 600 }}>
-            Testing note: in this build, tweet-campaign validation is intentionally
-            relaxed for testing. It will check if the submitted tweet has campaign name mentioned in it or not, use{" "}
-            <a
-              href={validationProcessUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open deployed validation branch"
-              style={{
-                color: "#991b1b",
-                textDecoration: "underline",
-                textUnderlineOffset: 2,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              this deployed branch
-            </a>
-            .
-          </p>
         </form>
       </div>
     </div>
