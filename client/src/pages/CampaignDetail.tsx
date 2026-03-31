@@ -57,6 +57,7 @@ export function CampaignDetail() {
   const [actionInfo, setActionInfo] = useState<string | null>(null);
   const [previewViewsByIndex, setPreviewViewsByIndex] = useState<Record<number, number>>({});
   const [workerReachable, setWorkerReachable] = useState(true);
+  const [workerSignerConfigured, setWorkerSignerConfigured] = useState(true);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const hasAutoSyncedRef = useRef(false);
   const {
@@ -73,7 +74,7 @@ export function CampaignDetail() {
   }, [queryClient, refetch]);
 
   const handleSyncViews = useCallback(async () => {
-    if (parsedCampaignId === null || !campaign) {
+    if (!campaign) {
       return;
     }
 
@@ -90,90 +91,58 @@ export function CampaignDetail() {
     setIsSyncing(true);
 
     try {
-      const finalized = campaign.resultsFinalized ?? campaign.status === "finalized";
-      const deadlineMs = campaign.deadlineUnix
-        ? campaign.deadlineUnix * 1000
-        : new Date(campaign.deadline).getTime();
-      const isPastDeadline = Number.isFinite(deadlineMs)
-        ? Date.now() >= deadlineMs
-        : true;
-      const isActiveNow = !finalized && !isPastDeadline;
-
-      if (isActiveNow) {
-        if (campaign.submissions.length === 0) {
-          setActionInfo("No submissions yet to preview-sync.");
-          return;
-        }
-
-        const scrapeRes = await fetch(`${workerBaseUrl}/scrape-batch`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            tweetIds: campaign.submissions.map((submission) => submission.tweetLink),
-          }),
-        });
-
-        const scrapeData = (await scrapeRes.json().catch(() => null)) as
-          | {
-              error?: string;
-              results?: Array<
-                | { views?: number; error?: string }
-                | null
-                | undefined
-              >;
-            }
-          | null;
-
-        if (!scrapeRes.ok || !scrapeData?.results) {
-          throw new Error(
-            scrapeData?.error ??
-              `Worker preview sync failed with status ${scrapeRes.status}`,
-          );
-        }
-
-        const nextPreviewViews: Record<number, number> = {};
-
-        scrapeData.results.forEach((result, index) => {
-          const contractIndex = campaign.submissions[index]?.contractIndex;
-
-          if (
-            typeof contractIndex === "number" &&
-            result &&
-            typeof result.views === "number" &&
-            result.views >= 0
-          ) {
-            nextPreviewViews[contractIndex] = result.views;
-          }
-        });
-
-        setPreviewViewsByIndex(nextPreviewViews);
-        setActionInfo(
-          "Preview sync completed. Values shown are live worker estimates and not written on-chain until campaign ends.",
-        );
+      if (campaign.submissions.length === 0) {
+        setActionInfo("No submissions yet to sync.");
         return;
       }
 
-      const res = await fetch(`${workerBaseUrl}/sync-campaign`, {
+      const scrapeRes = await fetch(`${workerBaseUrl}/scrape-batch`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ campaignId: parsedCampaignId }),
+        body: JSON.stringify({
+          tweetIds: campaign.submissions.map((submission) => submission.tweetLink),
+        }),
       });
 
-      const data = (await res.json().catch(() => null)) as
-        | { error?: string }
+      const scrapeData = (await scrapeRes.json().catch(() => null)) as
+        | {
+            error?: string;
+            results?: Array<
+              | { views?: number; error?: string }
+              | null
+              | undefined
+            >;
+          }
         | null;
 
-      if (!res.ok) {
-        throw new Error(data?.error ?? `Worker sync failed with status ${res.status}`);
+      if (!scrapeRes.ok || !scrapeData?.results) {
+        throw new Error(
+          scrapeData?.error ??
+            `Worker preview sync failed with status ${scrapeRes.status}`,
+        );
       }
 
-      setPreviewViewsByIndex({});
-      setActionInfo("On-chain sync complete.");
-      await refreshCampaign();
+      const nextPreviewViews: Record<number, number> = {};
+
+      scrapeData.results.forEach((result, index) => {
+        const contractIndex = campaign.submissions[index]?.contractIndex;
+
+        if (
+          typeof contractIndex === "number" &&
+          result &&
+          typeof result.views === "number" &&
+          result.views >= 0
+        ) {
+          nextPreviewViews[contractIndex] = result.views;
+        }
+      });
+
+      setPreviewViewsByIndex(nextPreviewViews);
+      setActionInfo(
+        "Preview sync completed. Values shown are worker estimates only and stay off-chain until Finalize Distribution runs.",
+      );
     } catch (syncError) {
       setActionError(
         syncError instanceof Error ? syncError.message : String(syncError),
@@ -182,7 +151,7 @@ export function CampaignDetail() {
     } finally {
       setIsSyncing(false);
     }
-  }, [campaign, parsedCampaignId, refreshCampaign, workerReachable]);
+  }, [campaign, workerReachable]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -198,12 +167,21 @@ export function CampaignDetail() {
     async function checkWorkerHealth() {
       try {
         const res = await fetch(`${workerBaseUrl}/health`, { method: "GET" });
+        const data = (await res.json().catch(() => null)) as
+          | {
+              env?: {
+                signerConfigured?: boolean;
+              };
+            }
+          | null;
         if (!cancelled) {
           setWorkerReachable(res.ok);
+          setWorkerSignerConfigured(Boolean(data?.env?.signerConfigured));
         }
       } catch {
         if (!cancelled) {
           setWorkerReachable(false);
+          setWorkerSignerConfigured(false);
         }
       }
     }
@@ -240,7 +218,58 @@ export function CampaignDetail() {
   }, [campaign, handleSyncViews, isSyncing, nowMs]);
 
   async function handleFinalize() {
-    await handleSyncViews();
+    if (parsedCampaignId === null || !campaign) {
+      return;
+    }
+
+    if (!workerReachable) {
+      setActionError(
+        `Worker is offline at ${workerBaseUrl}. Start the worker and try finalizing again.`,
+      );
+      setActionInfo(null);
+      return;
+    }
+
+    if (!workerSignerConfigured) {
+      setActionError(
+        `Worker signer is not configured at ${workerBaseUrl}. Set STELLAR_SECRET_KEY before finalizing on-chain.`,
+      );
+      setActionInfo(null);
+      return;
+    }
+
+    setActionError(null);
+    setActionInfo(null);
+    setIsSyncing(true);
+
+    try {
+      const res = await fetch(`${workerBaseUrl}/sync-campaign`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ campaignId: parsedCampaignId }),
+      });
+
+      const data = (await res.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+
+      if (!res.ok) {
+        throw new Error(data?.error ?? `Worker finalize failed with status ${res.status}`);
+      }
+
+      setPreviewViewsByIndex({});
+      setActionInfo("Distribution finalized on-chain.");
+      await refreshCampaign();
+    } catch (finalizeError) {
+      setActionError(
+        finalizeError instanceof Error ? finalizeError.message : String(finalizeError),
+      );
+      setActionInfo(null);
+    } finally {
+      setIsSyncing(false);
+    }
   }
 
   async function handleClaim(id: string) {
@@ -405,11 +434,19 @@ export function CampaignDetail() {
   const isPastDeadline = Number.isFinite(deadlineMs) ? nowMs >= deadlineMs : true;
   const isActiveNow = !finalized && !isPastDeadline;
   const syncBlocked = !workerReachable;
+  const finalizeBlocked = !workerReachable || !workerSignerConfigured;
   const syncDisabledReason = finalized
     ? undefined
     : !workerReachable
       ? offlineWorkerMessage
       : actionError ?? undefined;
+  const finalizeDisabledReason = finalized
+    ? undefined
+    : !workerReachable
+      ? offlineWorkerMessage
+      : !workerSignerConfigured
+        ? `Worker signer is not configured at ${workerBaseUrl}. Set STELLAR_SECRET_KEY to finalize on-chain.`
+        : actionError ?? undefined;
   const addSubmissionDisabled = finalized || campaign.status === "closed";
   const displayedSubmissions: Submission[] = campaign.submissions.map((submission) => {
     const index = submission.contractIndex;
@@ -559,8 +596,10 @@ export function CampaignDetail() {
           <ActionBar
             finalized={finalized}
             isSyncing={isSyncing}
-            disabled={syncBlocked}
+            syncDisabled={syncBlocked}
+            finalizeDisabled={finalizeBlocked}
             syncDisabledReason={syncDisabledReason}
+            finalizeDisabledReason={finalizeDisabledReason}
             onSyncViews={handleSyncViews}
             onFinalize={handleFinalize}
           />

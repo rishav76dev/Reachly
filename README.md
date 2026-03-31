@@ -6,8 +6,8 @@ Reachly is a decentralized campaign platform where brands fund campaigns on Stel
 
 - Brands create campaigns and lock a reward budget on-chain.
 - Creators submit post links to campaign entries.
-- A Bun worker fetches post metrics from ScrapingDog.
-- The worker writes views on-chain and finalizes campaign results.
+- A Bun worker fetches post metrics from ScrapingDog for preview syncs.
+- The worker writes views on-chain and finalizes campaign results only when finalization runs.
 - Creators claim rewards directly from the contract.
 
 ## Reward formula
@@ -115,7 +115,7 @@ Worker:
 - `PORT`
 - `SOROBAN_RPC_URL`
 - `CONTRACT_ID`
-- `STELLAR_SECRET_KEY`
+- `STELLAR_SECRET_KEY` (only needed for on-chain finalization via `POST /sync-campaign`)
 
 ## Local development
 

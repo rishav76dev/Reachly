@@ -3,10 +3,12 @@ import { RefreshCw, Lock, CheckCircle } from "lucide-react";
 interface Props {
   finalized: boolean;
   isSyncing?: boolean;
-  disabled?: boolean;
+  syncDisabled?: boolean;
+  finalizeDisabled?: boolean;
   syncLabel?: string;
   helperText?: string;
   syncDisabledReason?: string;
+  finalizeDisabledReason?: string;
   onSyncViews: () => void;
   onFinalize: () => void;
 }
@@ -14,10 +16,12 @@ interface Props {
 export function ActionBar({
   finalized,
   isSyncing = false,
-  disabled = false,
+  syncDisabled = false,
+  finalizeDisabled = false,
   syncLabel = "Sync Views",
-  helperText = "Fetch current X post views from the worker, then finalize the distribution on-chain.",
+  helperText = "Sync Views refreshes worker estimates only. Finalize Distribution writes views on-chain and locks rewards.",
   syncDisabledReason,
+  finalizeDisabledReason,
   onSyncViews,
   onFinalize,
 }: Props) {
@@ -30,7 +34,7 @@ export function ActionBar({
               <button
                 className="btn btn-outline btn-sm"
                 onClick={onSyncViews}
-                disabled={disabled || isSyncing}
+                disabled={syncDisabled || isSyncing}
                 title={syncDisabledReason}
                 style={{
                   display: "inline-flex",
@@ -43,8 +47,8 @@ export function ActionBar({
                   border: "1.5px solid var(--border)",
                   background: "var(--white)",
                   color: "var(--black)",
-                  cursor: disabled || isSyncing ? "not-allowed" : "pointer",
-                  opacity: disabled || isSyncing ? 0.6 : 1,
+                  cursor: syncDisabled || isSyncing ? "not-allowed" : "pointer",
+                  opacity: syncDisabled || isSyncing ? 0.6 : 1,
                   transition: "all 150ms",
                 }}
               >
@@ -54,7 +58,8 @@ export function ActionBar({
 
               <button
                 onClick={onFinalize}
-                disabled={disabled || isSyncing}
+                disabled={finalizeDisabled || isSyncing}
+                title={finalizeDisabledReason}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -66,8 +71,8 @@ export function ActionBar({
                   border: "1.5px solid var(--black)",
                   background: "var(--black)",
                   color: "var(--white)",
-                  cursor: disabled || isSyncing ? "not-allowed" : "pointer",
-                  opacity: disabled || isSyncing ? 0.6 : 1,
+                  cursor: finalizeDisabled || isSyncing ? "not-allowed" : "pointer",
+                  opacity: finalizeDisabled || isSyncing ? 0.6 : 1,
                   transition: "all 150ms",
                 }}
               >
@@ -85,7 +90,7 @@ export function ActionBar({
 
         {!finalized && (
           <p className="action-bar-status">
-            {syncDisabledReason ?? helperText}
+            {finalizeDisabledReason ?? syncDisabledReason ?? helperText}
           </p>
         )}
       </div>
