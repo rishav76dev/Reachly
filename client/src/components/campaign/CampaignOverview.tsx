@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Coins, Clock, Users, Eye, Zap } from "lucide-react";
 import type { Campaign } from "@/types";
 import { getTotalViews } from "@/lib/campaigns";
@@ -8,14 +9,23 @@ interface Props {
 }
 
 export function CampaignOverview({ campaign, finalized }: Props) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const totalViews = campaign.totalViews ?? getTotalViews(campaign);
   const deadlineMs = campaign.deadlineUnix
     ? campaign.deadlineUnix * 1000
     : new Date(campaign.deadline).getTime();
-  const remainingMs = deadlineMs - Date.now();
+  const remainingMs = deadlineMs - nowMs;
   const distributed = finalized
     ? campaign.submissions.reduce((a, s) => a + s.reward, 0)
     : 0;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   let deadlineText = "Campaign ended";
 
