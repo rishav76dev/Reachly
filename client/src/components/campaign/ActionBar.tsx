@@ -19,7 +19,7 @@ export function ActionBar({
   syncDisabled = false,
   finalizeDisabled = false,
   syncLabel = "Sync Views",
-  helperText = "Sync Views refreshes worker estimates only. Finalize Distribution writes views on-chain and locks rewards.",
+  helperText = "Finalize Distribution signs multiple wallet transactions (one per submission plus finalization). No funds are spent for signing. If the campaign ends with no submissions, finalization returns the full budget to the creator.",
   syncDisabledReason,
   finalizeDisabledReason,
   onSyncViews,

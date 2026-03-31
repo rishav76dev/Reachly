@@ -81,7 +81,7 @@ export function Navbar() {
         {/* Logo */}
         <Link to="/" className="pill-nav-logo">
           <AsteriskLogo />
-          Reachlypaign
+          Reachly
         </Link>
 
         {/* Nav links */}

@@ -1,7 +1,7 @@
 import type { Campaign } from "@/types";
 
 // ─────────────────────────────────────────────────────────────
-//  Reachlypaign — Mock Data
+//  Reachly — Mock Data
 //  5 campaigns × 3-5 submissions each
 // ─────────────────────────────────────────────────────────────
 

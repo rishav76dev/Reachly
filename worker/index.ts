@@ -101,7 +101,7 @@ function err(message: string, status = 400): Response {
 
 function handleHealth(): Response {
   return ok({
-    service: "Reachlypaign Worker",
+    service: "Reachly Worker",
     status: "ok",
     timestamp: new Date().toISOString(),
     env: {
@@ -237,7 +237,7 @@ async function handleSyncCampaign(req: Request): Promise<Response> {
 
     if (!STELLAR_SECRET_KEY) {
       return err(
-        "STELLAR_SECRET_KEY is required for /sync-campaign because set_views and finalize_results submit transactions.",
+        "STELLAR_SECRET_KEY is required for /sync-campaign because set_views submits transactions.",
         500,
       );
     }
@@ -360,22 +360,11 @@ async function handleSyncCampaign(req: Request): Promise<Response> {
       );
     }
 
-    const finalizeTx = await campaignFactory.finalize_results({
-      campaign_id: campaignIdU32,
-    });
-    const finalizeSent = await finalizeTx.signAndSend();
-    const finalizeTxHash = finalizeSent.sendTransactionResponse?.hash ?? "";
-
-    console.log(
-      `[/sync-campaign] ✓ finalized campaign ${campaignId} with tx ${finalizeTxHash}`,
-    );
-
     return ok({
       campaignId: campaignId.toString(),
       submissionCount,
       updates,
       skipped,
-      finalizeTxHash,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -429,7 +418,7 @@ const publicRenderUrl = process.env.RENDER_EXTERNAL_URL;
 
 console.log(`
 ╭─────────────────────────────────────────╮
-│   Reachlypaign Worker                    │
+│   Reachly Worker                         │
 │   Listening on http://${listenHost}:${PORT}    │
 │                                         │
 │   GET  /health                          │

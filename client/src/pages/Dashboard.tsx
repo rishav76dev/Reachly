@@ -30,7 +30,7 @@ const DURATION_OPTIONS = [
 ] as const;
 
 export function Dashboard() {
-  const [statusFilter, setStatusFilter] = useState<BrowseStatusFilter>("active");
+  const [statusFilter, setStatusFilter] = useState<BrowseStatusFilter>("all");
   const [createFeedback, setCreateFeedback] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [campaignName, setCampaignName] = useState("");

@@ -177,7 +177,7 @@ export function TrustedBySection() {
           <span className="landing-footer-mark" aria-hidden="true">
             <FooterLogo />
           </span>
-          <p>Design better campaign experiences with Reachlypaign.</p>
+          <p>Design better campaign experiences with Reachly.</p>
         </div>
 
         <div className="landing-footer-links">
@@ -197,7 +197,7 @@ export function TrustedBySection() {
         </div>
 
         <div className="landing-footer-bottom">
-          <p>© Reachlypaign 2026. All rights reserved</p>
+          <p>© Reachly 2026. All rights reserved</p>
           <div>
             <a href="/">Privacy policy</a>
             <a href="/">Terms</a>

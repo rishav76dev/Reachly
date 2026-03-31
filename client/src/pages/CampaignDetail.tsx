@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { signTransaction as freighterSignTransaction } from "@stellar/freighter-api";
 import { Navbar } from "@/components/Navbar";
@@ -11,6 +11,8 @@ import { AddSubmissionForm } from "@/components/campaign/AddSubmissionForm";
 import {
   claimCampaignRewardTx,
   contractAddress,
+  finalizeCampaignResultsTx,
+  setCampaignViewsTx,
   submitCampaignPostTx,
   useCampaignDetail,
   workerBaseUrl,
@@ -57,7 +59,6 @@ export function CampaignDetail() {
   const [actionInfo, setActionInfo] = useState<string | null>(null);
   const [previewViewsByIndex, setPreviewViewsByIndex] = useState<Record<number, number>>({});
   const [workerReachable, setWorkerReachable] = useState(true);
-  const [workerSignerConfigured, setWorkerSignerConfigured] = useState(true);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const hasAutoSyncedRef = useRef(false);
   const {
@@ -167,21 +168,12 @@ export function CampaignDetail() {
     async function checkWorkerHealth() {
       try {
         const res = await fetch(`${workerBaseUrl}/health`, { method: "GET" });
-        const data = (await res.json().catch(() => null)) as
-          | {
-              env?: {
-                signerConfigured?: boolean;
-              };
-            }
-          | null;
         if (!cancelled) {
           setWorkerReachable(res.ok);
-          setWorkerSignerConfigured(Boolean(data?.env?.signerConfigured));
         }
       } catch {
         if (!cancelled) {
           setWorkerReachable(false);
-          setWorkerSignerConfigured(false);
         }
       }
     }
@@ -222,17 +214,23 @@ export function CampaignDetail() {
       return;
     }
 
-    if (!workerReachable) {
+    if (!isConnected || !address || !contractAddress) {
+      setActionError("Connect a wallet before finalizing distribution.");
+      setActionInfo(null);
+      return;
+    }
+
+    if (!isSupportedNetwork) {
       setActionError(
-        `Worker is offline at ${workerBaseUrl}. Start the worker and try finalizing again.`,
+        `Switch your wallet to Stellar ${expectedNetwork} before finalizing distribution.`,
       );
       setActionInfo(null);
       return;
     }
 
-    if (!workerSignerConfigured) {
+    if (!workerReachable) {
       setActionError(
-        `Worker signer is not configured at ${workerBaseUrl}. Set STELLAR_SECRET_KEY before finalizing on-chain.`,
+        `Worker is offline at ${workerBaseUrl}. Start the worker and try finalizing again.`,
       );
       setActionInfo(null);
       return;
@@ -243,29 +241,89 @@ export function CampaignDetail() {
     setIsSyncing(true);
 
     try {
-      const res = await fetch(`${workerBaseUrl}/sync-campaign`, {
+      if (campaign.submissions.length === 0) {
+        setActionInfo("No submissions yet to finalize.");
+        return;
+      }
+
+      const scrapeRes = await fetch(`${workerBaseUrl}/scrape-batch`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ campaignId: parsedCampaignId }),
+        body: JSON.stringify({
+          tweetIds: campaign.submissions.map((submission) => submission.tweetLink),
+        }),
       });
 
-      const data = (await res.json().catch(() => null)) as
-        | { error?: string }
+      const scrapeData = (await scrapeRes.json().catch(() => null)) as
+        | {
+            error?: string;
+            results?: Array<
+              | { views?: number; error?: string }
+              | null
+              | undefined
+            >;
+          }
         | null;
 
-      if (!res.ok) {
-        throw new Error(data?.error ?? `Worker finalize failed with status ${res.status}`);
+      if (!scrapeRes.ok || !scrapeData?.results) {
+        throw new Error(
+          scrapeData?.error ??
+            `Worker preview sync failed with status ${scrapeRes.status}`,
+        );
       }
+
+      const viewUpdates: Array<{ index: number; views: number }> = [];
+
+      scrapeData.results.forEach((result, index) => {
+        const contractIndex = campaign.submissions[index]?.contractIndex;
+
+        if (
+          typeof contractIndex === "number" &&
+          result &&
+          typeof result.views === "number" &&
+          result.views > 0
+        ) {
+          viewUpdates.push({ index: contractIndex, views: result.views });
+        }
+      });
+
+      if (viewUpdates.length === 0) {
+        setActionError("No views recorded yet. Run Sync Views before finalizing distribution.");
+        setActionInfo(null);
+        return;
+      }
+
+      for (const update of viewUpdates) {
+        await setCampaignViewsTx({
+          campaignId: parsedCampaignId,
+          index: update.index,
+          views: update.views,
+          caller: address,
+          signTransaction: freighterSignTransaction,
+        });
+      }
+
+      await finalizeCampaignResultsTx({
+        campaignId: parsedCampaignId,
+        caller: address,
+        signTransaction: freighterSignTransaction,
+      });
 
       setPreviewViewsByIndex({});
       setActionInfo("Distribution finalized on-chain.");
       await refreshCampaign();
     } catch (finalizeError) {
-      setActionError(
-        finalizeError instanceof Error ? finalizeError.message : String(finalizeError),
-      );
+      let message =
+        finalizeError instanceof Error ? finalizeError.message : String(finalizeError);
+      if (message.includes("Error(Contract, #5)") || message.includes("CampaignStillActive")) {
+        message = "Wait for the submission deadline to be over before finalizing.";
+      }
+      if (message.includes("Error(Contract, #8)") || message.includes("NoViewsRecorded")) {
+        message = "No views recorded yet. Run Sync Views before finalizing distribution.";
+      }
+      setActionError(message);
       setActionInfo(null);
     } finally {
       setIsSyncing(false);
@@ -434,7 +492,8 @@ export function CampaignDetail() {
   const isPastDeadline = Number.isFinite(deadlineMs) ? nowMs >= deadlineMs : true;
   const isActiveNow = !finalized && !isPastDeadline;
   const syncBlocked = !workerReachable;
-  const finalizeBlocked = !workerReachable || !workerSignerConfigured;
+  const finalizeBlocked =
+    !isConnected || !address || !contractAddress || !isSupportedNetwork;
   const syncDisabledReason = finalized
     ? undefined
     : !workerReachable
@@ -442,11 +501,13 @@ export function CampaignDetail() {
       : actionError ?? undefined;
   const finalizeDisabledReason = finalized
     ? undefined
-    : !workerReachable
-      ? offlineWorkerMessage
-      : !workerSignerConfigured
-        ? `Worker signer is not configured at ${workerBaseUrl}. Set STELLAR_SECRET_KEY to finalize on-chain.`
-        : actionError ?? undefined;
+    : !isConnected || !address
+      ? "Connect a wallet to finalize distribution."
+      : !contractAddress
+        ? "Contract is not configured. Set VITE_STELLAR_CONTRACT_ID."
+        : !isSupportedNetwork
+          ? `Switch your wallet to Stellar ${expectedNetwork} to finalize distribution.`
+          : actionError ?? undefined;
   const addSubmissionDisabled = finalized || campaign.status === "closed";
   const displayedSubmissions: Submission[] = campaign.submissions.map((submission) => {
     const index = submission.contractIndex;
@@ -526,23 +587,6 @@ export function CampaignDetail() {
                 })}
               </p>
             </div>
-
-            <a
-              href={`https://x.com`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--gray-500)",
-                textDecoration: "none",
-              }}
-            >
-              <ExternalLink size={13} /> View on X
-            </a>
 
             {!finalized && (
               <button

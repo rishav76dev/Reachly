@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-//  Reachlypaign — Core Types
+//  Reachly — Core Types
 // ─────────────────────────────────────────────────────────────
 
 export type CampaignStatus = "active" | "finalized" | "closed";

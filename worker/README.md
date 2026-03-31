@@ -1,4 +1,4 @@
-# Reachlypaign Worker
+# Reachly Worker
 
 Bun worker service for:
 

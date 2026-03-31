@@ -399,6 +399,60 @@ export async function submitCampaignPostTx(params: {
   await tx.signAndSend();
 }
 
+export async function setCampaignViewsTx(params: {
+  campaignId: number;
+  index: number;
+  views: number;
+  caller: string;
+  signTransaction: SignTransaction;
+}) {
+  if (!Number.isFinite(params.views) || params.views < 0) {
+    throw new Error("Views must be a non-negative number.");
+  }
+
+  const client = getClient({
+    publicKey: params.caller,
+    signTransaction: params.signTransaction,
+  });
+
+  const tx = await client.set_views(
+    {
+      campaign_id: params.campaignId,
+      index: params.index,
+      views: BigInt(Math.floor(params.views)),
+    },
+    {
+      publicKey: params.caller,
+      signTransaction: params.signTransaction,
+      restore: true,
+    },
+  );
+
+  await tx.signAndSend();
+}
+
+export async function finalizeCampaignResultsTx(params: {
+  campaignId: number;
+  caller: string;
+  signTransaction: SignTransaction;
+}) {
+  const client = getClient({
+    publicKey: params.caller,
+    signTransaction: params.signTransaction,
+  });
+
+  const tx = await client.finalize_results(
+    { campaign_id: params.campaignId },
+    {
+      publicKey: params.caller,
+      signTransaction: params.signTransaction,
+      restore: true,
+    },
+  );
+
+  await tx.signAndSend();
+}
+
 export async function claimCampaignRewardTx(params: {
   campaignId: number;
   index: number;

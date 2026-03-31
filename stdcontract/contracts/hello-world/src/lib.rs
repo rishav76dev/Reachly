@@ -159,6 +159,18 @@ impl CampaignFactory {
         if campaign.results_finalized {
             panic_with_error!(&env, Error::ResultsAlreadyFinalized);
         }
+        if campaign.submissions.len() == 0 {
+            let token_client = token::Client::new(&env, &campaign.token);
+            token_client.transfer(
+                &env.current_contract_address(),
+                &campaign.brand,
+                &campaign.total_budget,
+            );
+            campaign.results_finalized = true;
+            Self::save_campaign(&env, campaign_id, &campaign);
+            return;
+        }
+
         if campaign.total_views == 0 {
             panic_with_error!(&env, Error::NoViewsRecorded);
         }

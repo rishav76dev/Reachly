@@ -1,6 +1,6 @@
 import { Coins, Clock, Users, Eye, Zap } from "lucide-react";
 import type { Campaign } from "@/types";
-import { daysUntil, getTotalViews } from "@/lib/campaigns";
+import { getTotalViews } from "@/lib/campaigns";
 
 interface Props {
   campaign: Campaign;
@@ -9,19 +9,30 @@ interface Props {
 
 export function CampaignOverview({ campaign, finalized }: Props) {
   const totalViews = campaign.totalViews ?? getTotalViews(campaign);
-  const days = daysUntil(campaign.deadline);
+  const deadlineMs = campaign.deadlineUnix
+    ? campaign.deadlineUnix * 1000
+    : new Date(campaign.deadline).getTime();
+  const remainingMs = deadlineMs - Date.now();
   const distributed = finalized
     ? campaign.submissions.reduce((a, s) => a + s.reward, 0)
     : 0;
 
-  const deadlineText =
-    campaign.status === "closed"
-      ? "Campaign ended"
-      : days < 0
-        ? `${Math.abs(days)} days overdue`
-        : days === 0
-          ? "Ends today"
-          : `${days} days left`;
+  let deadlineText = "Campaign ended";
+
+  if (campaign.status !== "closed" && Number.isFinite(remainingMs)) {
+    if (remainingMs <= 0) {
+      deadlineText = "Campaign ended";
+    } else if (remainingMs < 60 * 60 * 1000) {
+      const minutes = Math.ceil(remainingMs / (1000 * 60));
+      deadlineText = `Ends in ${minutes}m`;
+    } else if (remainingMs < 24 * 60 * 60 * 1000) {
+      const hours = Math.ceil(remainingMs / (1000 * 60 * 60));
+      deadlineText = `Ends in ${hours}h`;
+    } else {
+      const days = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+      deadlineText = `${days} day${days === 1 ? "" : "s"} left`;
+    }
+  }
 
   const items = [
     {
