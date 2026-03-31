@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { signTransaction as freighterSignTransaction } from "@stellar/freighter-api";
 import { Navbar } from "@/components/Navbar";
@@ -550,9 +550,9 @@ export function CampaignDetail() {
             <ArrowLeft size={14} /> All Campaigns
           </Link>
 
-          <div className="detail-title-row">
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div className="detail-title-row flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5 md:gap-3">
                 {/* Gradient dot */}
                 <div
                   style={{
@@ -563,66 +563,38 @@ export function CampaignDetail() {
                     flexShrink: 0,
                   }}
                 />
-                <h1 className="detail-title">{campaign.name}</h1>
+                <h1 className="detail-title break-words text-[1.75rem] leading-[1.1] md:text-[2.125rem]">
+                  {campaign.name}
+                </h1>
                 <StatusBadge status={finalized ? "finalized" : isActiveNow ? "active" : "closed"} />
                 <span
+                  className="w-fit rounded-md bg-[var(--gray-100)] px-2 py-[3px] text-[11px] font-semibold text-[var(--gray-500)]"
                   style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: "3px 8px",
-                    borderRadius: 6,
-                    background: "var(--gray-100)",
-                    color: "var(--gray-500)",
+                    lineHeight: 1,
                   }}
                 >
                   {campaign.category}
                 </span>
               </div>
-              <p className="detail-creator">
-                Created by {campaign.creatorAddress} ·{" "}
-                {new Date(campaign.deadline).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+              <p className="detail-creator mt-1 break-words text-[12px] leading-6 md:text-[13px]">
+                Created by <span className="break-all">{campaign.creatorAddress}</span>
+                <span className="hidden md:inline"> · </span>
+                <span className="block md:inline">
+                  {new Date(campaign.deadline).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
               </p>
             </div>
-
-            {!finalized && (
-              <button
-                onClick={handleSyncViews}
-                disabled={syncBlocked || isSyncing}
-                title={syncDisabledReason}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  border: "1.5px solid var(--border)",
-                  background: "var(--white)",
-                  color: "var(--black)",
-                  cursor: syncBlocked || isSyncing ? "not-allowed" : "pointer",
-                  opacity: syncBlocked || isSyncing ? 0.6 : 1,
-                  transition: "all 150ms",
-                }}
-              >
-                <RefreshCw size={13} />
-                {isSyncing ? "Syncing..." : "Sync Views"}
-              </button>
-            )}
           </div>
 
           {/* Description */}
           <p
+            className="mt-3 max-w-full break-words text-[13px] leading-[1.6] text-[var(--gray-500)] md:max-w-[680px]"
             style={{
-              fontSize: 13,
-              color: "var(--gray-500)",
-              maxWidth: 680,
-              lineHeight: 1.6,
-              marginTop: 12,
+              overflowWrap: "anywhere",
             }}
           >
             {campaign.description}

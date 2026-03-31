@@ -2510,6 +2510,8 @@ button {
     color: var(--gray-500);
     font-family: var(--font-mono);
     margin-top: 4px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
 }
 
 .detail-body {
