@@ -4,6 +4,8 @@ Reachly is a decentralized creator campaign platform on Stellar Soroban. Brands 
 
 
 
+Note : I have added the twitter post validation logic too, but for easier testing I am not pushing that feature , you check the feature add the another branch it is completed. Also I have deployed that branch but due to vercel policy, it will need request , pin me if you require it  the link https://reachly-git-feat-twitter-validation-rishavs-projects-f2c32f67.vercel.app/
+
 ## Problem this project solves
 
 Traditional influencer campaigns have three recurring trust problems:
