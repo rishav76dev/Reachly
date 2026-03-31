@@ -95,7 +95,7 @@ export function AddSubmissionForm({
           )}
           <p style={{ fontSize: 12, color: "#dc2626", marginTop: 8, fontWeight: 600 }}>
             Testing note: in this build, tweet-campaign validation is intentionally
-            relaxed for testing. It will check it the submitted tweet has campaign name mentioned in it or not, use{" "}
+            relaxed for testing. It will check if the submitted tweet has campaign name mentioned in it or not, use{" "}
             <a
               href={validationProcessUrl}
               target="_blank"
