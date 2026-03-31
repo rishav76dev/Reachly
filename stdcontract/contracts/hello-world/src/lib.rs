@@ -251,3 +251,6 @@ impl CampaignFactory {
             .set(&DataKey::Campaign(campaign_id), campaign);
     }
 }
+
+#[cfg(test)]
+mod test;
