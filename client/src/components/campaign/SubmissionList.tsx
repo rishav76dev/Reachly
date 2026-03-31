@@ -73,7 +73,7 @@ export function SubmissionList({
                 Total views: {totalViews.toLocaleString()}
               </span>
               <span className="submissions-total-label">
-                Distributed: {" "}
+                Distributed:{" "}
                 {submissions
                   .reduce((a, s) => a + s.reward, 0)
                   .toFixed(6)}{" "}

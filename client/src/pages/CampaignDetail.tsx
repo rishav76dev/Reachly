@@ -55,6 +55,7 @@ export function CampaignDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [claimPendingId, setClaimPendingId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionInfo, setActionInfo] = useState<string | null>(null);
   const [previewViewsByIndex, setPreviewViewsByIndex] = useState<Record<number, number>>({});
@@ -370,20 +371,64 @@ export function CampaignDetail() {
   }
 
   async function handleAddSubmission(tweetLink: string) {
-    if (!isConnected || !address || !contractAddress || parsedCampaignId === null) {
+    if (!isConnected || !address || !contractAddress || parsedCampaignId === null || !campaign) {
       setActionError("Connect a wallet before submitting a post.");
+      setSubmitError("Connect a wallet before submitting a post.");
       return;
     }
 
     if (!isSupportedNetwork) {
       setActionError(`Switch your wallet to Stellar ${expectedNetwork} before submitting.`);
+      setSubmitError(`Switch your wallet to Stellar ${expectedNetwork} before submitting.`);
       return;
     }
 
     setActionError(null);
+    setSubmitError(null);
     setIsSubmitting(true);
 
     try {
+      if (!workerReachable) {
+        const message =
+          `Worker is offline at ${workerBaseUrl}. Cannot validate tweet content. Start the worker and try again.`;
+        setActionError(message);
+        setSubmitError(message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const scrapeRes = await fetch(`${workerBaseUrl}/scrape`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tweetId: tweetLink }),
+      });
+
+      const scrapeData = (await scrapeRes.json().catch(() => null)) as {
+        success?: boolean;
+        data?: { text?: string };
+        error?: string;
+      } | null;
+
+      if (!scrapeRes.ok || !scrapeData?.success) {
+        throw new Error(
+          scrapeData?.error ??
+            `Failed to validate tweet content. Worker returned status ${scrapeRes.status}.`,
+        );
+      }
+
+      const tweetText = scrapeData.data?.text ?? "";
+      const campaignNameLower = campaign.name.toLowerCase();
+      const tweetTextLower = tweetText.toLowerCase();
+
+      if (!tweetTextLower.includes(campaignNameLower)) {
+        const message =
+          `Tweet must mention or reference "${campaign.name}" for this campaign.`;
+        setActionError(message);
+        setSubmitError(message);
+        setIsSubmitting(false);
+        return;
+      }
+
       await submitCampaignPostTx({
         campaignId: parsedCampaignId,
         creator: address,
@@ -392,11 +437,12 @@ export function CampaignDetail() {
       });
 
       await refreshCampaign();
+      setSubmitError(null);
       setActionInfo("Submission sent on-chain.");
     } catch (submitError) {
-      setActionError(
-        submitError instanceof Error ? submitError.message : String(submitError),
-      );
+      const message = submitError instanceof Error ? submitError.message : String(submitError);
+      setActionError(message);
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -664,6 +710,9 @@ export function CampaignDetail() {
           disabled={addSubmissionDisabled}
           submitting={isSubmitting}
           submitHint={submitHint}
+          submitError={submitError}
+          campaignName={campaign.name}
+          existingTweetLinks={campaign.submissions.map((s) => s.tweetLink)}
           onAdd={handleAddSubmission}
         />
       </div>

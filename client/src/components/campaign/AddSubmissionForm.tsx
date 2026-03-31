@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Plus, Link2 } from "lucide-react";
+import { extractTweetId } from "@/lib/utils";
 
 interface Props {
   disabled: boolean;
   submitting?: boolean;
   submitHint?: string;
+  submitError?: string | null;
+  campaignName?: string;
+  existingTweetLinks?: string[];
   onAdd: (tweetLink: string) => void;
 }
 
@@ -12,27 +16,56 @@ export function AddSubmissionForm({
   disabled,
   submitting = false,
   submitHint,
+  submitError,
+  campaignName,
+  existingTweetLinks = [],
   onAdd,
 }: Props) {
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
+  const validationProcessUrl = "https://your-vercel-validation-link.vercel.app";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (!link.trim()) {
+    const trimmedLink = link.trim();
+
+    if (!trimmedLink) {
       setError("Tweet link is required.");
       return;
     }
-    if (!link.includes("x.com") && !link.includes("twitter.com")) {
+
+    const hasValidDomain =
+      trimmedLink.includes("x.com") || trimmedLink.includes("twitter.com");
+    if (!hasValidDomain) {
       setError("Please enter a valid X / Twitter URL.");
       return;
     }
 
-    onAdd(link.trim());
+    const tweetId = extractTweetId(trimmedLink);
+    if (!tweetId) {
+      setError("Tweet URL must include a valid status ID.");
+      return;
+    }
+
+    const normalizedLink = trimmedLink.toLowerCase();
+    const isDuplicate = existingTweetLinks.some(
+      (existing) => existing.toLowerCase() === normalizedLink,
+    );
+    if (isDuplicate) {
+      setError("This tweet has already been submitted to this campaign.");
+      return;
+    }
+
+    onAdd(trimmedLink);
     setLink("");
   }
+
+  const validationHint = campaignName
+    ? `Tweet must mention or reference "${campaignName}" for this campaign.`
+    : null;
+  const displayError = error || submitError;
 
   return (
     <div className="add-submission-shell">
@@ -78,10 +111,15 @@ export function AddSubmissionForm({
               {submitting ? "Submitting..." : "Add"}
             </button>
           </div>
-          {error && (
-            <p style={{ fontSize: 12, color: "#ef4444", marginTop: 8 }}>{error}</p>
+          {displayError && (
+            <p style={{ fontSize: 12, color: "#ef4444", marginTop: 8 }}>{displayError}</p>
           )}
-          {!error && submitHint && (
+          {!displayError && validationHint && (
+            <p style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 8 }}>
+              {validationHint}
+            </p>
+          )}
+          {!displayError && !validationHint && submitHint && (
             <p style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 8 }}>
               {submitHint}
             </p>
@@ -91,6 +129,7 @@ export function AddSubmissionForm({
               Distribution is finalized — no new submissions accepted.
             </p>
           )}
+          
         </form>
       </div>
     </div>
