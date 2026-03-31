@@ -1116,6 +1116,11 @@ button {
     margin-bottom: 34px;
 }
 
+.hero-stage-count {
+    margin: 0;
+    margin-bottom: 22px;
+}
+
 .hero-stage-actions {
     margin: 0;
 }
@@ -2627,6 +2632,13 @@ button {
 .submissions-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 640px;
+}
+
+.submissions-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .submissions-table th {
@@ -2880,6 +2892,10 @@ button {
         display: none;
     }
 
+    .submissions-table {
+        min-width: 560px;
+    }
+
     .dash-campaign-card {
         padding: 22px;
         border-radius: 22px;
@@ -2950,6 +2966,30 @@ button {
     .add-submission-row {
         flex-direction: column;
     }
+
+    .submissions-panel-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .submissions-total-row {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .submissions-table {
+        min-width: 520px;
+    }
+
+    .submissions-table th,
+    .submissions-table td {
+        padding: 10px 12px;
+    }
+
+    .tweet-link {
+        max-width: 140px;
+    }
+
     .hero-center {
         min-height: 100svh;
         padding: 88px 20px 22px;

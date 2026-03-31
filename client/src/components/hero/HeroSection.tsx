@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { CampaignFlowSection } from "@/components/hero/CampaignFlowSection";
 import { getCampaignCount } from "@/lib/stellarCampaign";
 
 
@@ -44,7 +43,7 @@ export function HeroSection() {
         and full on-chain accountability. New campaigns weekly.
       </p>
 
-      <p className="hero-sequence-item text-[14px] leading-[1.35] text-[#3e4a7a]">
+      <p className="hero-stage-count hero-sequence-item text-[14px] leading-[1.35] text-[#3e4a7a]">
         On-chain campaigns on Stellar testnet: {campaignCount ?? "..."}
       </p>
 
@@ -57,9 +56,7 @@ export function HeroSection() {
         </Link>
       </div>
 
-      <div className="hero-stage-flow hero-sequence-item hero-seq-flow">
-        <CampaignFlowSection />
-      </div>
+      
     </section>
   );
 }

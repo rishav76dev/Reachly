@@ -1,158 +1,221 @@
 # Reachly
 
-Reachly is a decentralized campaign platform where brands fund campaigns on Stellar Soroban, creators submit X/Twitter post links, and rewards are distributed proportionally from on-chain recorded views.
+Reachly is a decentralized creator campaign platform on Stellar Soroban. Brands lock campaign budgets on-chain, creators submit X post links, views are synced, and rewards are distributed proportionally to contribution.
 
-## What Reachly does
 
-- Brands create campaigns and lock a reward budget on-chain.
-- Creators submit post links to campaign entries.
-- A Bun worker fetches post metrics from ScrapingDog for preview syncs.
-- The worker writes views on-chain and finalizes campaign results only when finalization runs.
-- Creators claim rewards directly from the contract.
 
-## Reward formula
+## Problem this project solves
 
-When results are finalized, each submission reward is computed proportionally:
+Traditional influencer campaigns have three recurring trust problems:
 
-```text
+- Budget custody risk: creators cannot verify that rewards are actually reserved.
+- Opaque attribution: brands can dispute performance data or modify payout logic off-platform.
+- Delayed or discretionary payouts: creators may wait for manual settlement.
+
+Reachly solves this by combining:
+
+- On-chain budget escrow through Soroban token transfers.
+- Deterministic payout logic in a public smart contract.
+- Creator self-serve claiming after finalization.
+
+## Core model: pay per view
+
+Reachly uses a proportional pay-per-view model. At finalization, each submission gets:
+
 reward = (submission_views * total_budget) / total_views
+
+Where:
+
+- submission_views = views for one creator post
+- total_budget = total campaign reward pool in token units
+- total_views = sum of all recorded submission views
+
+Behavioral notes:
+
+- If there are no submissions, full budget is returned to the campaign brand.
+- If submissions exist but all views are zero, finalization is rejected.
+- Claims are creator-authorized and one-time only.
+
+Contract reference:
+
+- [stdcontract/contracts/hello-world/src/lib.rs](stdcontract/contracts/hello-world/src/lib.rs)
+
+## Architecture diagram
+
+```mermaid
+flowchart LR
+    B[Brand wallet\nFreighter] -->|create_campaign + token transfer| C[(Soroban Campaign Contract)]
+    T[(Token contract)] -->|transfer budget into escrow| C
+
+    U[Creator wallet\nFreighter] -->|submit post link| C
+
+    W[Worker service\nBun] -->|scrape X metrics| X[ScrapingDog API]
+    W -->|optional write: set_views| C
+
+    A[Frontend app\nReact + Vite] -->|read campaign + submissions| C
+    A -->|preview sync request| W
+    A -->|wallet-signed writes\nset_views/finalize/claim| C
+
+    C -->|reward distribution + claim state| A
 ```
 
-This logic is implemented in the Soroban contract at `stdcontract/contracts/hello-world/src/lib.rs`.
+## End-to-end flow
 
-## Architecture
+1. Brand creates campaign from the frontend with wallet signature.
+2. Contract escrows campaign budget in token units.
+3. Creators submit X links on-chain.
+4. Worker scrapes view metrics for preview and/or sync.
+5. Finalization writes views and locks per-submission rewards.
+6. Creators claim rewards directly from contract.
+
+## Repository structure
 
 ```text
 Reachly/
-├── client/       React + Vite frontend
-├── worker/       Bun service for scraping and on-chain sync
-└── stdcontract/  Soroban smart contract workspace
+├── .github/workflows/ci.yml   CI pipeline
+├── client/                    React + Vite frontend
+├── worker/                    Bun scraper + sync API
+├── stdcontract/               Soroban contract workspace
+└── todo.md                    active development notes
 ```
 
-## Detailed file guide
+## File-by-file guide
 
-### Root
+### Root files
 
-- `README.md`: Project overview, architecture, setup, and operational notes.
+- [README.md](README.md): complete product and technical documentation.
+- [todo.md](todo.md): in-progress implementation tasks.
+- [.github/workflows/ci.yml](.github/workflows/ci.yml): GitHub Actions pipeline (frontend lint/build, worker install check, Rust tests).
 
-### Frontend (`client`)
+### Frontend app
 
-- `client/package.json`: Frontend scripts (`dev`, `build`, `lint`, `preview`) and web dependencies.
-- `client/src/main.tsx`: App bootstrap, React root rendering, and provider composition.
-- `client/src/App.tsx`: Router map for home, dashboard, and campaign detail pages.
-- `client/src/index.css`: Global design tokens, app-level styles, and shared visual rules.
-- `client/src/App.css`: Additional app-scoped styling.
+App shell and routing:
+
+- [client/src/main.tsx](client/src/main.tsx): React bootstrap and provider wiring.
+- [client/src/App.tsx](client/src/App.tsx): route map for Home, Dashboard, Campaign detail.
+- [client/src/index.css](client/src/index.css): design tokens, shared styles, responsive behavior.
+- [client/src/App.css](client/src/App.css): app-level layout styles.
 
 Pages:
 
-- `client/src/pages/Home.tsx`: Landing page and entry point for the user journey.
-- `client/src/pages/Dashboard.tsx`: Campaign list, campaign creation flow, and high-level campaign stats.
-- `client/src/pages/CampaignDetail.tsx`: Submission management, worker sync actions, finalization flow, and reward claiming UI.
+- [client/src/pages/Home.tsx](client/src/pages/Home.tsx): simplified marketing entry with navbar + hero CTA.
+- [client/src/pages/Dashboard.tsx](client/src/pages/Dashboard.tsx): campaign browse/filter/create and wallet-aware creation flow.
+- [client/src/pages/CampaignDetail.tsx](client/src/pages/CampaignDetail.tsx): submission management, sync preview, finalization, and claims.
 
-Core data and chain integration:
+Wallet and app providers:
 
-- `client/src/lib/campaigns.ts`: Main Soroban integration layer for fetching campaigns, reading submissions, creating campaigns, submitting links, and claiming rewards.
-- `client/src/lib/stellarCampaign.ts`: Helper utilities related to campaign handling and Stellar-specific transformations.
-- `client/src/types/index.ts`: Shared TypeScript models used across pages/components (`Campaign`, `Submission`, status types).
+- [client/src/web3/Providers.tsx](client/src/web3/Providers.tsx): wraps wallet provider + TanStack Query provider.
+- [client/src/web3/stellarWallet.tsx](client/src/web3/stellarWallet.tsx): Freighter connect/refresh/disconnect, network checks, address state.
 
-Wallet and providers:
+Data + chain integration:
 
-- `client/src/web3/Providers.tsx`: Wraps app with React Query and Stellar wallet provider contexts.
-- `client/src/web3/stellarWallet.tsx`: Freighter connection lifecycle, account state, network checks, and wallet actions.
+- [client/src/lib/campaigns.ts](client/src/lib/campaigns.ts): Soroban client creation, query hooks, write transactions, retry/rate-limit helpers.
+- [client/src/lib/stellarCampaign.ts](client/src/lib/stellarCampaign.ts): lightweight campaign count helper for hero UI.
+- [client/src/types/index.ts](client/src/types/index.ts): domain types for Campaign and Submission.
 
-UI and feature components:
+Core UI components:
 
-- `client/src/components/Navbar.tsx`: Top navigation used across pages.
-- `client/src/components/campaign/AddSubmissionForm.tsx`: Input form for adding X/Twitter post links to a campaign.
-- `client/src/components/campaign/SubmissionList.tsx`: Table/list rendering for campaign submissions.
-- `client/src/components/campaign/SubmissionRow.tsx`: Single submission row with link, views, and claim status controls.
-- `client/src/components/campaign/ActionBar.tsx`: Action controls for sync/finalize and related campaign operations.
-- `client/src/components/campaign/CampaignOverview.tsx`: Campaign summary block (budget, deadline, status).
-- `client/src/components/dashboard/CampaignCard.tsx`: Dashboard campaign card preview component.
-- `client/src/components/dashboard/DashboardStats.tsx`: Dashboard KPI and aggregate stats display.
+- [client/src/components/Navbar.tsx](client/src/components/Navbar.tsx): top nav with wallet connection state.
+- [client/src/components/dashboard/CampaignCard.tsx](client/src/components/dashboard/CampaignCard.tsx): campaign summary cards.
+- [client/src/components/dashboard/DashboardStats.tsx](client/src/components/dashboard/DashboardStats.tsx): dashboard stat blocks.
+- [client/src/components/campaign/ActionBar.tsx](client/src/components/campaign/ActionBar.tsx): sync/finalize controls and helper messaging.
+- [client/src/components/campaign/CampaignOverview.tsx](client/src/components/campaign/CampaignOverview.tsx): campaign metrics panel.
+- [client/src/components/campaign/AddSubmissionForm.tsx](client/src/components/campaign/AddSubmissionForm.tsx): new post submission form.
+- [client/src/components/campaign/SubmissionList.tsx](client/src/components/campaign/SubmissionList.tsx): responsive submissions table, mobile scroll wrapper, and totals.
+- [client/src/components/campaign/SubmissionRow.tsx](client/src/components/campaign/SubmissionRow.tsx): per-submission claim controls.
+- [client/src/components/hero/HeroSection.tsx](client/src/components/hero/HeroSection.tsx): hero copy, dynamic on-chain campaign counter, and CTA layout spacing.
 
-Generated contract client:
+UI primitives:
 
-- `client/src/packages/hello_world/src/index.ts`: Generated TypeScript bindings for invoking Soroban contract methods.
+- [client/src/components/ui](client/src/components/ui): reusable primitive UI building blocks (inputs, dialogs, popovers, fields, etc.).
 
-### Worker (`worker`)
+Generated contract bindings:
 
-- `worker/package.json`: Worker runtime scripts and Bun-related dependencies.
-- `worker/index.ts`: HTTP server, route handlers, scrape APIs, and on-chain sync/finalization orchestration.
-- `worker/scraper.ts`: Tweet ID extraction, ScrapingDog API call, and metric normalization.
-- `worker/README.md`: Worker-specific setup and endpoint notes.
-- `worker/.env.example`: Template for required worker environment variables.
+- [client/src/packages/hello_world/src/index.ts](client/src/packages/hello_world/src/index.ts): generated TypeScript contract client used by frontend and worker.
 
-### Smart contract (`stdcontract`)
+Frontend config files:
 
-- `stdcontract/Cargo.toml`: Workspace manifest and shared Rust/Soroban dependency setup.
-- `stdcontract/contracts/hello-world/Cargo.toml`: Contract crate definition.
-- `stdcontract/contracts/hello-world/src/lib.rs`: Campaign contract implementation (`create_campaign`, `submit`, `set_views`, `finalize_results`, `claim_reward`, getters).
-- `stdcontract/contracts/hello-world/Makefile`: Build and test shortcuts for contract development.
-- `stdcontract/README.md`: Soroban workspace-level notes.
+- [client/package.json](client/package.json): scripts and dependencies.
+- [client/vite.config.ts](client/vite.config.ts): Vite setup.
+- [client/eslint.config.js](client/eslint.config.js): lint rules.
+- [client/tailwind.config.js](client/tailwind.config.js): Tailwind config.
+- [client/vercel.json](client/vercel.json): deployment routing/build config.
+- [client/.env.example](client/.env.example): required frontend environment variables.
 
-## Worker endpoints
+### Worker service
 
-- `GET /health`
-- `POST /scrape`
-- `POST /scrape-batch`
-- `POST /sync-campaign`
+- [worker/index.ts](worker/index.ts): Bun HTTP router and endpoint handlers.
+- [worker/scraper.ts](worker/scraper.ts): tweet id parsing and ScrapingDog normalization.
+- [worker/package.json](worker/package.json): worker scripts and dependencies.
+- [worker/README.md](worker/README.md): worker setup and endpoint summary.
 
-## Environment variables
+Worker endpoints:
 
-Frontend (used in code):
+- GET /health
+- POST /scrape
+- POST /scrape-batch
+- POST /sync-campaign
 
-- `VITE_STELLAR_CONTRACT_ID`
-- `VITE_STELLAR_RPC_URL` (or `VITE_RPC_URL` fallback)
-- `VITE_STELLAR_NETWORK_PASSPHRASE`
-- `VITE_STELLAR_TOKEN_ADDRESS`
-- `VITE_WORKER_URL`
-- `VITE_STELLAR_NETWORK`
+### Smart contract workspace
 
-Worker:
+- [stdcontract/Cargo.toml](stdcontract/Cargo.toml): Rust workspace manifest.
+- [stdcontract/contracts/hello-world/Cargo.toml](stdcontract/contracts/hello-world/Cargo.toml): contract crate config.
+- [stdcontract/contracts/hello-world/src/lib.rs](stdcontract/contracts/hello-world/src/lib.rs): campaign contract logic.
+- [stdcontract/contracts/hello-world/src/test.rs](stdcontract/contracts/hello-world/src/test.rs): contract tests.
+- [stdcontract/contracts/hello-world/Makefile](stdcontract/contracts/hello-world/Makefile): helper commands.
+- [stdcontract/README.md](stdcontract/README.md): Soroban workspace notes.
 
-- `SCRAPING_DOG_API_KEY`
-- `PORT`
-- `SOROBAN_RPC_URL`
-- `CONTRACT_ID`
-- `STELLAR_SECRET_KEY` (only needed for on-chain finalization via `POST /sync-campaign`)
+## Contract method map
+
+- create_campaign: brand-auth call, token escrow transfer, campaign initialization.
+- submit: creator-auth call, appends submission if campaign active.
+- set_views: writes submission views after deadline and before finalization.
+- finalize_results: computes payout shares and locks reward data.
+- claim_reward: creator-auth reward claim transfer.
+- get_campaign_count/get_campaign/get_submission/get_submission_count: read APIs.
+
+
+## CI/CD
+
+Pipeline file:
+
+- [.github/workflows/ci.yml](.github/workflows/ci.yml)
+
+Current jobs:
+
+- Frontend lint and build.
+- Worker dependency install validation.
+- Soroban contract tests.
 
 ## Local development
 
 Frontend:
 
-```bash
-cd client
-npm install
-npm run dev
-```
+- cd client
+- npm install
+- npm run dev
 
 Worker:
 
-```bash
-cd worker
-bun install
-bun run dev
-```
+- cd worker
+- bun install
+- bun run dev
 
 Contract:
 
-```bash
-cd stdcontract/contracts/hello-world
-make build
-```
+- cd stdcontract/contracts/hello-world
+- make build
 
-From workspace root, contract tests can also be run with:
+Tests:
 
-```bash
-cd stdcontract
-cargo test
-```
+- cd stdcontract
+- cargo test
+
 
 ## Tech stack
 
-- Frontend: React, TypeScript, Vite, TanStack Query
-- Wallet: Freighter API + Stellar SDK
-- Worker: Bun, TypeScript
-- Contract: Soroban SDK (Rust)
-- Social data source: ScrapingDog X/Twitter API
+- Frontend: React, TypeScript, Vite, TanStack Query.
+- Wallet: Freighter API, Stellar SDK.
+- Worker: Bun, TypeScript.
+- Contract: Soroban SDK (Rust).
+- Social metric source: ScrapingDog X API.

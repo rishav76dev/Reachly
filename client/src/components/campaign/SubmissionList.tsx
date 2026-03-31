@@ -41,29 +41,31 @@ export function SubmissionList({
           </div>
         ) : (
           <>
-            <table className="submissions-table">
-              <thead>
-                <tr>
-                  <th>Creator</th>
-                  <th>Tweet Link</th>
-                  <th>Views</th>
-                  <th>Reward</th>
-                  <th>Claim</th>
-                </tr>
-              </thead>
-              <tbody>
-                {submissions.map((s) => (
-                  <SubmissionRow
-                    key={s.id}
-                    submission={s}
-                    reward={s.reward}
-                    finalized={finalized}
-                    onClaim={onClaim}
-                    claimPending={claimPendingId === s.id}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <div className="submissions-table-wrap">
+              <table className="submissions-table">
+                <thead>
+                  <tr>
+                    <th>Creator</th>
+                    <th>Tweet Link</th>
+                    <th>Views</th>
+                    <th>Reward</th>
+                    <th>Claim</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((s) => (
+                    <SubmissionRow
+                      key={s.id}
+                      submission={s}
+                      reward={s.reward}
+                      finalized={finalized}
+                      onClaim={onClaim}
+                      claimPending={claimPendingId === s.id}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {/* Totals row */}
             <div className="submissions-total-row">
