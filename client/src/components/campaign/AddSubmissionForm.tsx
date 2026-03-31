@@ -23,8 +23,7 @@ export function AddSubmissionForm({
 }: Props) {
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
-  const validationProcessUrl = "https://your-vercel-validation-link.vercel.app";
-
+ 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
