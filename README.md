@@ -219,3 +219,14 @@ Tests:
 - Worker: Bun, TypeScript.
 - Contract: Soroban SDK (Rust).
 - Social metric source: ScrapingDog X API.
+
+
+## Mobile Responsive screenshots
+<img width="488" height="795" alt="image" src="https://github.com/user-attachments/assets/e65c24a3-1187-4971-a4a4-0cbc6c736716" />
+<img width="531" height="801" alt="Screenshot From 2026-03-31 17-39-32" src="https://github.com/user-attachments/assets/29717733-0600-4b70-8d09-27aa82bc18e9" />
+<img width="531" height="801" alt="Screenshot From 2026-03-31 17-39-40" src="https://github.com/user-attachments/assets/fa34c765-047a-441f-abe0-b0e58c9f280f" />
+<img width="531" height="801" alt="Screenshot From 2026-03-31 17-39-44" src="https://github.com/user-attachments/assets/21f2bca1-d672-43a9-9eb1-2c4ae9639066" />
+
+## CI/CD
+<img width="1295" height="986" alt="Screenshot From 2026-03-31 16-50-35" src="https://github.com/user-attachments/assets/8194f68d-683a-4862-9e32-3c7f667f860e" />
+
