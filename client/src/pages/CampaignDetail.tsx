@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -67,12 +67,12 @@ export function CampaignDetail() {
     refetch,
   } = useCampaignDetail(parsedCampaignId);
 
-  async function refreshCampaign() {
+  const refreshCampaign = useCallback(async () => {
     await refetch();
     await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-  }
+  }, [queryClient, refetch]);
 
-  async function handleSyncViews() {
+  const handleSyncViews = useCallback(async () => {
     if (parsedCampaignId === null || !campaign) {
       return;
     }
@@ -182,7 +182,7 @@ export function CampaignDetail() {
     } finally {
       setIsSyncing(false);
     }
-  }
+  }, [campaign, parsedCampaignId, refreshCampaign, workerReachable]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -237,7 +237,7 @@ export function CampaignDetail() {
 
     hasAutoSyncedRef.current = true;
     void handleSyncViews();
-  }, [campaign, isSyncing, nowMs]);
+  }, [campaign, handleSyncViews, isSyncing, nowMs]);
 
   async function handleFinalize() {
     await handleSyncViews();

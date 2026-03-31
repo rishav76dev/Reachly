@@ -138,7 +138,17 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
       disconnect,
       refresh,
     }),
-    [address, connect, error, isConnected, isConnecting, isSupportedNetwork, network, refresh],
+    [
+      address,
+      connect,
+      disconnect,
+      error,
+      isConnected,
+      isConnecting,
+      isSupportedNetwork,
+      network,
+      refresh,
+    ],
   );
 
   return <StellarWalletContext.Provider value={value}>{children}</StellarWalletContext.Provider>;
