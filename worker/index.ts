@@ -2,6 +2,7 @@
 import "dotenv/config";
 import { Keypair } from "@stellar/stellar-sdk";
 import { basicNodeSigner } from "@stellar/stellar-sdk/contract";
+import { MongoClient, type Collection } from "mongodb";
 import {
   Client as CampaignFactoryClient,
   networks as contractNetworks,
@@ -14,6 +15,10 @@ const SOROBAN_RPC_URL =
   process.env.SOROBAN_RPC_URL ?? "https://soroban-testnet.stellar.org:443";
 const STELLAR_SECRET_KEY = process.env.STELLAR_SECRET_KEY ?? "";
 const CONTRACT_ID = process.env.CONTRACT_ID ?? "";
+const MONGODB_URI = process.env.MONGODB_URI ?? "";
+const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME ?? "reachly";
+const MONGODB_METADATA_COLLECTION =
+  process.env.MONGODB_METADATA_COLLECTION ?? "campaign_metadata";
 
 if (!API_KEY) {
   console.error(
@@ -36,6 +41,54 @@ type SkippedSyncUpdate = {
   link: string;
   reason: string;
 };
+
+type CampaignMetadataRecord = {
+  campaignId: string;
+  imageUrl?: string;
+  fullDescription?: string;
+  eligibility?: string[];
+  submissionRequirements?: string[];
+  tags?: string[];
+  community?: string;
+  socialHandle?: string;
+  maxSubmissionsPerUser?: number;
+  verificationMethod?: string;
+  customMetadata?: Record<string, unknown>;
+  updatedAt?: string;
+};
+
+// ── Campaign Metadata Storage ─────────────────────────────────
+let mongoClient: MongoClient | null = null;
+let metadataCollection: Collection<CampaignMetadataRecord> | null = null;
+
+async function initMetadataStore() {
+  if (!MONGODB_URI) {
+    throw new Error(
+      "MONGODB_URI must be set for campaign metadata storage. Configure MongoDB in worker/.env and restart the worker.",
+    );
+  }
+
+  mongoClient = new MongoClient(MONGODB_URI);
+  await mongoClient.connect();
+
+  metadataCollection = mongoClient
+    .db(MONGODB_DB_NAME)
+    .collection<CampaignMetadataRecord>(MONGODB_METADATA_COLLECTION);
+
+  await metadataCollection.createIndex({ campaignId: 1 }, { unique: true });
+
+  console.log(
+    `[metadata] Connected to MongoDB database "${MONGODB_DB_NAME}" collection "${MONGODB_METADATA_COLLECTION}"`,
+  );
+}
+
+function requireMetadataCollection(): Collection<CampaignMetadataRecord> {
+  if (!metadataCollection) {
+    throw new Error("Metadata store is not initialized.");
+  }
+
+  return metadataCollection;
+}
 
 function getCampaignFactoryClient(): CampaignFactoryClient {
   if (!CONTRACT_ID) {
@@ -109,6 +162,7 @@ function handleHealth(): Response {
       scrapingDogConfigured: Boolean(API_KEY),
       contractConfigured: Boolean(CONTRACT_ID),
       signerConfigured: Boolean(STELLAR_SECRET_KEY),
+      mongodbConfigured: Boolean(MONGODB_URI),
     },
   });
 }
@@ -373,6 +427,107 @@ async function handleSyncCampaign(req: Request): Promise<Response> {
   }
 }
 
+async function handleGetCampaignMetadata(campaignId: string): Promise<Response> {
+  let collection: Collection<CampaignMetadataRecord>;
+
+  try {
+    collection = requireMetadataCollection();
+  } catch (error) {
+    return err(
+      error instanceof Error ? error.message : "Metadata store is unavailable.",
+      503,
+    );
+  }
+
+  const metadata = await collection.findOne({ campaignId });
+
+  if (!metadata) {
+    return err(`Campaign metadata not found for ${campaignId}`, 404);
+  }
+
+  return ok({
+    ...metadata,
+    campaignId: metadata.campaignId,
+  });
+}
+
+async function handleSaveCampaignMetadata(
+  campaignId: string,
+  req: Request,
+): Promise<Response> {
+  let body: Record<string, unknown>;
+
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return err("Request body must be valid JSON.");
+  }
+
+  const metadata = {
+    campaignId,
+    imageUrl: body.imageUrl as string | undefined,
+    fullDescription: body.fullDescription as string | undefined,
+    eligibility: Array.isArray(body.eligibility) ? (body.eligibility as string[]) : undefined,
+    submissionRequirements: Array.isArray(body.submissionRequirements)
+      ? (body.submissionRequirements as string[])
+      : undefined,
+    tags: Array.isArray(body.tags) ? (body.tags as string[]) : undefined,
+    community: body.community as string | undefined,
+    socialHandle: body.socialHandle as string | undefined,
+    maxSubmissionsPerUser:
+      typeof body.maxSubmissionsPerUser === "number" ? body.maxSubmissionsPerUser : undefined,
+    verificationMethod: body.verificationMethod as string | undefined,
+    customMetadata: (typeof body.customMetadata === "object" && body.customMetadata !== null)
+      ? (body.customMetadata as Record<string, unknown>)
+      : undefined,
+    updatedAt: new Date().toISOString(),
+  };
+
+  let collection: Collection<CampaignMetadataRecord>;
+
+  try {
+    collection = requireMetadataCollection();
+  } catch (error) {
+    return err(
+      error instanceof Error ? error.message : "Metadata store is unavailable.",
+      503,
+    );
+  }
+
+  await collection.replaceOne({ campaignId }, metadata, { upsert: true });
+
+  console.log(`[metadata] Saved metadata for campaign ${campaignId}`);
+
+  return ok({
+    campaignId,
+    metadata,
+    message: "Campaign metadata saved successfully",
+  });
+}
+
+async function handleListCampaigns(): Promise<Response> {
+  let collection: Collection<CampaignMetadataRecord>;
+
+  try {
+    collection = requireMetadataCollection();
+  } catch (error) {
+    return err(
+      error instanceof Error ? error.message : "Metadata store is unavailable.",
+      503,
+    );
+  }
+
+  const campaigns = await collection.find({}).toArray();
+
+  return ok({
+    count: campaigns.length,
+    campaigns: campaigns.map((campaign) => ({
+      ...campaign,
+      id: campaign.campaignId,
+    })),
+  });
+}
+
 async function router(req: Request): Promise<Response> {
   const { pathname } = new URL(req.url);
   const method = req.method.toUpperCase();
@@ -398,13 +553,41 @@ async function router(req: Request): Promise<Response> {
     return handleSyncCampaign(req);
   }
 
+  // ── Metadata API Routes ────────────────────────────────────
+  if (method === "GET" && pathname === "/api/campaigns") {
+    return handleListCampaigns();
+  }
+
+  const metadataMatch = pathname.match(/^\/api\/campaigns\/([^/]+)\/metadata$/);
+  if (metadataMatch) {
+    const campaignId = metadataMatch[1];
+
+    if (!campaignId) {
+      return err("Campaign id is required.");
+    }
+
+    if (method === "GET") {
+      return handleGetCampaignMetadata(campaignId);
+    }
+
+    if (method === "POST" || method === "PUT") {
+      return handleSaveCampaignMetadata(campaignId, req);
+    }
+  }
+
   // ── 404 ───────────────────────────────────────────────────
   return err(
     `Route not found: ${method} ${pathname}. ` +
-      "Available: GET /health · POST /scrape · POST /scrape-batch · POST /sync-campaign",
+      "Available: GET /health · POST /scrape · POST /scrape-batch · POST /sync-campaign · GET/POST /api/campaigns/:id/metadata",
     404,
   );
 }
+
+// ── Initialize metadata store ─────────────────────────────────
+void initMetadataStore().catch((error) => {
+  const message = error instanceof Error ? error.message : String(error);
+  console.warn(`[metadata] continuing without MongoDB: ${message}`);
+});
 
 // ── Start server ──────────────────────────────────────────────
 
@@ -417,15 +600,21 @@ const listenHost = server.hostname || "0.0.0.0";
 const publicRenderUrl = process.env.RENDER_EXTERNAL_URL;
 
 console.log(`
-╭─────────────────────────────────────────╮
-│   Reachly Worker                         │
-│   Listening on http://${listenHost}:${PORT}    │
-│                                         │
-│   GET  /health                          │
-│   POST /scrape          (single tweet)  │
-│   POST /scrape-batch    (bulk tweets)   │
-│   POST /sync-campaign   (on-chain sync) │
-╰─────────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────────╮
+│   Reachly Worker                                             │
+│   Listening on http://${listenHost}:${PORT}                         │
+│                                                             │
+│   Core APIs:                                                │
+│   GET  /health                            (health check)   │
+│   POST /scrape                            (single tweet)   │
+│   POST /scrape-batch                      (bulk tweets)    │
+│   POST /sync-campaign                     (on-chain sync)  │
+│                                                             │
+│   Metadata APIs:                                            │
+│   GET  /api/campaigns/:id/metadata        (fetch)          │
+│   POST /api/campaigns/:id/metadata        (update)         │
+│   GET  /api/campaigns                     (list all)       │
+╰─────────────────────────────────────────────────────────────╯
 `);
 
 if (publicRenderUrl) {

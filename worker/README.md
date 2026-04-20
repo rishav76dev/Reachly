@@ -33,3 +33,22 @@ Run:
 ```bash
 bun run index.ts
 ```
+
+## MongoDB metadata storage
+
+Campaign metadata is stored in MongoDB.
+
+Required values:
+
+- `MONGODB_URI`
+
+Optional values:
+
+- `MONGODB_DB_NAME` (default: `reachly`)
+- `MONGODB_METADATA_COLLECTION` (default: `campaign_metadata`)
+
+The worker uses the collection keyed by `campaignId` for:
+
+- `GET /api/campaigns/:id/metadata`
+- `POST /api/campaigns/:id/metadata`
+- `GET /api/campaigns`
