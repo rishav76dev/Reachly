@@ -39,7 +39,7 @@ export function Dashboard() {
     (typeof DURATION_OPTIONS)[number]["value"]
   >("2");
   const [isCreating, setIsCreating] = useState(false);
-  const { address, connect, isConnected, isSupportedNetwork, expectedNetwork } =
+  const { address, connect, isConnected, isSupportedNetwork, expectedNetwork, networkIssueMessage } =
     useStellarWallet();
   const queryClient = useQueryClient();
   const { data: campaigns = [], isLoading, isError, error } = useCampaigns();
@@ -72,9 +72,7 @@ export function Dashboard() {
     }
 
     if (!isSupportedNetwork) {
-      setCreateFeedback(
-        `Switch your wallet to Stellar ${expectedNetwork} before creating a campaign.`,
-      );
+      setCreateFeedback(networkIssueMessage ?? `Switch your wallet to Stellar ${expectedNetwork} before creating a campaign.`);
       setShowCreateForm(false);
       return;
     }
@@ -99,7 +97,7 @@ export function Dashboard() {
     }
 
     if (!isSupportedNetwork) {
-      setCreateFeedback(`Switch to Stellar ${expectedNetwork} before creating a campaign.`);
+      setCreateFeedback(networkIssueMessage ?? `Switch to Stellar ${expectedNetwork} before creating a campaign.`);
       return;
     }
 

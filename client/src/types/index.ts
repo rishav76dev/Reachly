@@ -35,6 +35,30 @@ export interface Submission {
   submittedAt: string;
 }
 
+// ── Campaign Metadata ─────────────────────────────────────────
+export interface CampaignMetadata {
+  /** Banner/cover image URL */
+  imageUrl?: string;
+  /** Detailed description of campaign goals and requirements */
+  fullDescription?: string;
+  /** Eligibility criteria for participants */
+  eligibility?: string[];
+  /** Required content/submission guidelines */
+  submissionRequirements?: string[];
+  /** Tags for filtering and discovery */
+  tags?: string[];
+  /** Community name or brand name */
+  community?: string;
+  /** Social media handles */
+  socialHandle?: string;
+  /** Maximum submissions per user */
+  maxSubmissionsPerUser?: number;
+  /** Verification method for submissions */
+  verificationMethod?: "twitter-link" | "manual" | "auto";
+  /** Additional metadata stored as JSON */
+  customMetadata?: Record<string, unknown>;
+}
+
 // ── Campaign ──────────────────────────────────────────────────
 export interface Campaign {
   id: string;
@@ -60,6 +84,8 @@ export interface Campaign {
   resultsFinalized?: boolean;
   /** Number of submissions, even when submissions are not loaded */
   submissionCount?: number;
+  /** Extended campaign metadata */
+  metadata?: CampaignMetadata;
   submissions: Submission[];
 }
 

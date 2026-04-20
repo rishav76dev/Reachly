@@ -76,6 +76,8 @@ export function CampaignCard({ campaign }: Props) {
   const reward = fmtCompact(campaign.totalBudget);
   const dueLabel = formatDue(campaign.deadline);
   const isActive = campaign.status === "active";
+  const imageUrl = campaign.metadata?.imageUrl;
+  const tags = campaign.metadata?.tags ?? [];
 
   return (
     <div
@@ -91,15 +93,37 @@ export function CampaignCard({ campaign }: Props) {
         <div className="dash-campaign-left">
           <div
             className="dash-campaign-thumb"
-            style={{ background: campaign.coverGradient }}
+            style={
+              imageUrl
+                ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                : { background: campaign.coverGradient }
+            }
             aria-hidden="true"
           >
-            <span>{initialsFromName(campaign.name)}</span>
+            {!imageUrl && <span>{initialsFromName(campaign.name)}</span>}
           </div>
 
           <div className="dash-campaign-copy">
             <h3 className="dash-campaign-title">{campaign.name}</h3>
             <p className="dash-campaign-creator">{creatorLabel(campaign.creatorAddress)}</p>
+
+            {tags.length > 0 && (
+              <div className="flex gap-1 flex-wrap mb-2">
+                {tags.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-xs px-2 py-1 rounded-full bg-slate-200 text-slate-700"
+                  >
+                    {tag}
+                  </span>
+                ))}
+                {tags.length > 3 && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">
+                    +{tags.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="dash-campaign-meta-row">
               <span>{campaign.category || "Other"}</span>

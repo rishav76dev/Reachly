@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { signTransaction as freighterSignTransaction } from "@stellar/freighter-api";
 import { Navbar } from "@/components/Navbar";
 import { CampaignOverview } from "@/components/campaign/CampaignOverview";
+import { MetadataSection } from "@/components/campaign/MetadataSection";
 import { ActionBar } from "@/components/campaign/ActionBar";
 import { SubmissionList } from "@/components/campaign/SubmissionList";
 import { AddSubmissionForm } from "@/components/campaign/AddSubmissionForm";
@@ -50,7 +51,7 @@ export function CampaignDetail() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const parsedCampaignId =
     campaignId && /^\d+$/.test(campaignId) ? Number(campaignId) : null;
-  const { address, isConnected, isSupportedNetwork, expectedNetwork } = useStellarWallet();
+  const { address, isConnected, isSupportedNetwork, expectedNetwork, networkIssueMessage } = useStellarWallet();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -221,9 +222,7 @@ export function CampaignDetail() {
     }
 
     if (!isSupportedNetwork) {
-      setActionError(
-        `Switch your wallet to Stellar ${expectedNetwork} before finalizing distribution.`,
-      );
+      setActionError(networkIssueMessage ?? `Switch your wallet to Stellar ${expectedNetwork} before finalizing distribution.`);
       setActionInfo(null);
       return;
     }
@@ -337,7 +336,7 @@ export function CampaignDetail() {
     }
 
     if (!isSupportedNetwork) {
-      setActionError(`Switch your wallet to Stellar ${expectedNetwork} before claiming rewards.`);
+      setActionError(networkIssueMessage ?? `Switch your wallet to Stellar ${expectedNetwork} before claiming rewards.`);
       return;
     }
 
@@ -376,7 +375,7 @@ export function CampaignDetail() {
     }
 
     if (!isSupportedNetwork) {
-      setActionError(`Switch your wallet to Stellar ${expectedNetwork} before submitting.`);
+      setActionError(networkIssueMessage ?? `Switch your wallet to Stellar ${expectedNetwork} before submitting.`);
       return;
     }
 
@@ -601,6 +600,13 @@ export function CampaignDetail() {
           </p>
         </div>
       </div>
+
+      {/* Metadata Section */}
+      {campaign.metadata && (
+        <div className="detail-body">
+          <MetadataSection metadata={campaign.metadata} />
+        </div>
+      )}
 
       {/* Body */}
       <div className="detail-body">

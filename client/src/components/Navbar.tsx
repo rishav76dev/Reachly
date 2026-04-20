@@ -63,7 +63,16 @@ export function Navbar() {
     isSupportedNetwork,
     network,
     expectedNetwork,
+    networkIssueMessage,
   } = useStellarWallet();
+
+  const networkActionLabel =
+    networkIssueMessage?.includes("Main Net")
+      ? "Switch to Test Net"
+      : networkIssueMessage?.includes("unsupported Stellar network") ||
+          networkIssueMessage?.includes("did not report")
+        ? "Unsupported Wallet"
+        : "Switch Wallet";
 
   useEffect(() => {
     const onScroll = () => {
@@ -122,9 +131,9 @@ export function Navbar() {
             <button
               type="button"
               className="wallet-nav-button wallet-nav-button-alert"
-              title={`Switch your Freighter wallet to Stellar ${expectedNetwork}. Current: ${network ?? "unknown"}`}
+              title={networkIssueMessage ?? `Switch your Freighter wallet to Stellar ${expectedNetwork}. Current: ${network ?? "unknown"}`}
             >
-              Wrong Network
+              {networkActionLabel}
             </button>
           ) : (
             <button

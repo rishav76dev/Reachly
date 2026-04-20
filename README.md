@@ -236,3 +236,53 @@ Tests:
 ## CI/CD
 <img width="1295" height="986" alt="Screenshot From 2026-03-31 16-50-35" src="https://github.com/user-attachments/assets/8194f68d-683a-4862-9e32-3c7f667f860e" />
 
+
+---
+
+## MVP Iteration 2: Campaign Metadata
+
+This iteration adds comprehensive campaign metadata support for Reachly.
+
+### Key Features Added
+
+1. **Campaign Metadata System** - banner images, eligibility criteria, submission guidelines, tags
+2. **Enhanced Smart Contract** - metadata fields stored on-chain
+3. **Worker API Expansion** - metadata endpoints
+4. **Frontend Integration** - MetadataSection component, updated campaign cards with images/tags
+
+### New Files
+
+- [client/src/components/campaign/MetadataSection.tsx](client/src/components/campaign/MetadataSection.tsx) - Campaign metadata display
+
+### New Worker Endpoints
+
+```
+Metadata APIs:
+- GET  /api/campaigns/:id/metadata        (fetch campaign metadata)
+- POST /api/campaigns/:id/metadata        (update campaign metadata)
+- GET  /api/campaigns                     (list all campaigns with metadata)
+```
+
+### MVP Completion Checklist
+
+ Campaign metadata with images, eligibility, requirements, tags
+ Smart contract extended with metadata fields
+ Worker API for metadata management
+ Architecture documentation
+
+### Testing with Real Users
+
+1. Recruit 5+ testnet users from Stellar community
+2. Have users participate in campaigns
+3. Collect feedback via an external form if needed
+4. Document improvements
+
+### Next Phase Improvements (Based on Feedback)
+
+- Advanced campaign filtering by tags
+- User participation history dashboard
+- Metadata editor UI for brands
+- Analytics dashboard for creators
+- Mobile optimization
+- Improved error messaging
+

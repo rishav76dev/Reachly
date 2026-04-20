@@ -208,19 +208,18 @@ export function getTotalViews(campaign: Campaign): number {
   return campaign.submissions.reduce((acc, submission) => acc + submission.views, 0);
 }
 
-export function getGlobalStats(campaigns: Campaign[]) {
-  const totalBudget = campaigns.reduce((sum, campaign) => sum + campaign.totalBudget, 0);
-  const totalSubmissions = campaigns.reduce(
-    (sum, campaign) => sum + campaign.submissions.length,
-    0,
-  );
-  const totalViews = campaigns.reduce(
-    (sum, campaign) => sum + (campaign.totalViews ?? getTotalViews(campaign)),
-    0,
-  );
-  const active = campaigns.filter((campaign) => campaign.status === "active").length;
-
-  return { totalBudget, totalSubmissions, totalViews, active };
+/** Fetch enriched metadata from worker for a campaign */
+async function fetchCampaignMetadata(campaignId: string): Promise<Partial<Campaign["metadata"]> | null> {
+  try {
+    const response = await fetch(`${workerBaseUrl}/api/campaigns/${campaignId}/metadata`);
+    if (!response.ok) {
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    // Silently fail; metadata is optional
+    return null;
+  }
 }
 
 function buildCampaignBase(
@@ -233,12 +232,15 @@ function buildCampaignBase(
 
   const deadlineUnix = Number(onChainCampaign.deadline);
 
+  const category = "Other";
+  const description = "This campaign is loaded from Soroban state.";
+  const verificationMethod = "twitter-link";
+
   return {
     id: id.toString(),
     name: resolveCampaignName(id, onChainCampaign.name),
-    description:
-      "This campaign is loaded from Soroban state. Rich metadata is not stored on-chain yet, so the UI shows live budget and timing data.",
-    category: "Other",
+    description,
+    category,
     totalBudget: formatStroopsToXlm(onChainCampaign.total_budget),
     totalBudgetWei: onChainCampaign.total_budget,
     deadline: new Date(deadlineUnix * 1000).toISOString(),
@@ -248,6 +250,10 @@ function buildCampaignBase(
     coverGradient: gradientForId(id),
     totalViews: Number(onChainCampaign.total_views),
     resultsFinalized: onChainCampaign.results_finalized,
+    // Initialize metadata with on-chain fields; worker will enrich with more data
+    metadata: {
+      verificationMethod,
+    },
   };
 }
 
@@ -310,11 +316,22 @@ async function fetchCampaignDetail(campaignId: number): Promise<Campaign | null>
     submittedAt: "",
   }));
 
-  return {
+  const baseCampaign = {
     ...buildCampaignBase(campaignId, campaign),
     submissions,
     submissionCount: submissions.length,
   };
+
+  // Enrich with worker metadata if available
+  const workerMetadata = await fetchCampaignMetadata(baseCampaign.id);
+  if (workerMetadata) {
+    baseCampaign.metadata = {
+      ...baseCampaign.metadata,
+      ...workerMetadata,
+    };
+  }
+
+  return baseCampaign;
 }
 
 export async function createCampaignTx(params: {

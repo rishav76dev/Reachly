@@ -5,14 +5,17 @@ import {
   requestAccess,
 } from "@stellar/freighter-api";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { networkPassphrase } from "@/lib/campaigns";
 
 type StellarWalletContextValue = {
   address: string | null;
   network: string | null;
+  networkPassphrase: string | null;
   isConnected: boolean;
   isConnecting: boolean;
   isSupportedNetwork: boolean;
   expectedNetwork: string;
+  networkIssueMessage: string | null;
   error: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
@@ -22,11 +25,47 @@ type StellarWalletContextValue = {
 const DEFAULT_EXPECTED_NETWORK =
   (import.meta.env.VITE_STELLAR_NETWORK as string | undefined)?.trim().toLowerCase() ||
   "testnet";
+const DEFAULT_EXPECTED_NETWORK_PASSPHRASE = networkPassphrase.trim().toLowerCase();
+const MAINNET_NETWORK_PASSPHRASE = "public global stellar network ; september 2015";
 
 const StellarWalletContext = createContext<StellarWalletContextValue | null>(null);
 
 function normalizeNetworkName(value: string | null): string {
   return value?.trim().toLowerCase() ?? "";
+}
+
+function normalizeNetworkPassphrase(value: string | null): string {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function formatExpectedNetworkLabel(value: string): string {
+  return value.toLowerCase() === "testnet" ? "Test Net" : value;
+}
+
+function getNetworkIssueMessage(network: string | null, networkPassphrase: string | null): string | null {
+  const normalizedNetwork = normalizeNetworkName(network);
+  const normalizedPassphrase = normalizeNetworkPassphrase(networkPassphrase);
+
+  if (!normalizedNetwork && !normalizedPassphrase) {
+    return "Freighter did not report a Stellar network. If you are using another wallet, Reachly requires Freighter on Stellar Test Net.";
+  }
+
+  if (
+    normalizedNetwork === DEFAULT_EXPECTED_NETWORK ||
+    normalizedPassphrase === DEFAULT_EXPECTED_NETWORK_PASSPHRASE
+  ) {
+    return null;
+  }
+
+  if (
+    normalizedNetwork === "public" ||
+    normalizedNetwork.includes("main") ||
+    normalizedPassphrase === MAINNET_NETWORK_PASSPHRASE
+  ) {
+    return "Freighter is on Stellar Main Net. Switch it to Test Net in Freighter.";
+  }
+
+  return `Freighter is on ${network ?? "an unsupported Stellar network"}. Switch it to ${formatExpectedNetworkLabel(DEFAULT_EXPECTED_NETWORK)} in Freighter.`;
 }
 
 function shortenAddress(address: string): string {
@@ -38,6 +77,7 @@ function shortenAddress(address: string): string {
 export function StellarWalletProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [network, setNetwork] = useState<string | null>(null);
+  const [networkPassphrase, setNetworkPassphrase] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +88,7 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
       if (connection.error || !connection.isConnected) {
         setAddress(null);
         setNetwork(null);
+        setNetworkPassphrase(null);
         return;
       }
 
@@ -66,10 +107,12 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
 
       setAddress(addressResult.address || null);
       setNetwork(networkResult.network || null);
+      setNetworkPassphrase(networkResult.networkPassphrase || null);
       setError(null);
     } catch (refreshError) {
       setAddress(null);
       setNetwork(null);
+      setNetworkPassphrase(null);
       setError(refreshError instanceof Error ? refreshError.message : String(refreshError));
     }
   }, []);
@@ -100,6 +143,7 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
 
       setAddress(addressResult.address || null);
       setNetwork(networkResult.network || null);
+      setNetworkPassphrase(networkResult.networkPassphrase || null);
     } catch (connectError) {
       setError(connectError instanceof Error ? connectError.message : String(connectError));
       throw connectError;
@@ -111,6 +155,7 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
   const disconnect = useCallback(() => {
     setAddress(null);
     setNetwork(null);
+    setNetworkPassphrase(null);
     setError(null);
   }, []);
 
@@ -119,20 +164,25 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
   }, [refresh]);
 
   const normalizedNetwork = normalizeNetworkName(network);
+  const normalizedPassphrase = normalizeNetworkPassphrase(networkPassphrase);
   const isConnected = Boolean(address);
   const isSupportedNetwork =
     !isConnected ||
-    normalizedNetwork.length === 0 ||
+    normalizedPassphrase === DEFAULT_EXPECTED_NETWORK_PASSPHRASE ||
+    normalizedNetwork === DEFAULT_EXPECTED_NETWORK ||
     normalizedNetwork.includes(DEFAULT_EXPECTED_NETWORK);
+  const networkIssueMessage = getNetworkIssueMessage(network, networkPassphrase);
 
   const value = useMemo<StellarWalletContextValue>(
     () => ({
       address,
       network,
+      networkPassphrase,
       isConnected,
       isConnecting,
       isSupportedNetwork,
       expectedNetwork: DEFAULT_EXPECTED_NETWORK,
+      networkIssueMessage,
       error,
       connect,
       disconnect,
@@ -147,6 +197,8 @@ export function StellarWalletProvider({ children }: { children: React.ReactNode 
       isConnecting,
       isSupportedNetwork,
       network,
+      networkIssueMessage,
+      networkPassphrase,
       refresh,
     ],
   );

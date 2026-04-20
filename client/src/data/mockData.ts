@@ -17,6 +17,28 @@ export const MOCK_CAMPAIGNS: Campaign[] = [
     status: "active",
     creatorAddress: "0xaBcD...1234",
     coverGradient: "linear-gradient(135deg, #b8fe66 0%, #4ade80 100%)",
+    metadata: {
+      imageUrl: "https://images.unsplash.com/photo-1639322537228-f710d846310a?w=1200&h=600",
+      fullDescription:
+        "Join us in revolutionizing decentralized finance with our groundbreaking automated liquidity protocol. We're looking for talented content creators to share their insights on how this technology will reshape the DeFi landscape.",
+      eligibility: [
+        "Minimum 500 Twitter followers",
+        "Active in DeFi community",
+        "Age 18+",
+        "Verified Stellar wallet",
+      ],
+      submissionRequirements: [
+        "Original Twitter post about the protocol",
+        "Post must include campaign hashtag #DefiSummer2025",
+        "Minimum 100 characters, maximum 280 characters",
+        "Post must be public and not deleted during campaign",
+      ],
+      tags: ["DeFi", "Liquidity", "Protocol", "Web3", "Education"],
+      community: "DeFi Collective",
+      socialHandle: "@defi_summer_2025",
+      maxSubmissionsPerUser: 3,
+      verificationMethod: "twitter-link",
+    },
     submissions: [
       {
         id: "s1-1",
@@ -72,6 +94,29 @@ export const MOCK_CAMPAIGNS: Campaign[] = [
     status: "active",
     creatorAddress: "0xDeF0…5678",
     coverGradient: "linear-gradient(135deg, #a78bfa 0%, #ec4899 100%)",
+    metadata: {
+      imageUrl:
+        "https://images.unsplash.com/photo-1620321503375-cb662b4aea0f?w=1200&h=600",
+      fullDescription:
+        "Be part of NFT history with our exclusive genesis collection. Each NFT grants lifetime access to our community, voting rights, and future airdrops. Help us spread the word about our artistic vision and technical innovation.",
+      eligibility: [
+        "Minimum 1000 Twitter followers preferred",
+        "Engaged in NFT/Art community",
+        "Age 18+",
+        "Active on Stellar network",
+      ],
+      submissionRequirements: [
+        "Tweet about genesis NFT collection features",
+        "Include #NFTGenesisDrop and @collection handle",
+        "Share your thoughts on digital art or utility",
+        "Post must remain public for verification",
+      ],
+      tags: ["NFT", "Genesis", "Art", "Community", "Digital Collectibles"],
+      community: "NFT Genesis Collective",
+      socialHandle: "@genesis_nft_drop",
+      maxSubmissionsPerUser: 2,
+      verificationMethod: "twitter-link",
+    },
     submissions: [
       {
         id: "s2-1",
@@ -117,6 +162,36 @@ export const MOCK_CAMPAIGNS: Campaign[] = [
     status: "active",
     creatorAddress: "0x1122…aAbB",
     coverGradient: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
+    metadata: {
+      imageUrl:
+        "https://images.unsplash.com/photo-1552820728-8ac41f1ce891?w=1200&h=600",
+      fullDescription:
+        "Join our GameFi revolution with transparent tokenomics and sustainable play-to-earn mechanics. We're building the future of gaming where players truly own their assets. Share your gaming journey and earn rewards!",
+      eligibility: [
+        "Minimum 2000 Twitter followers",
+        "Active in gaming or crypto communities",
+        "Age 13+ (18+ for prize claims)",
+        "Ability to play or understand GameFi",
+      ],
+      submissionRequirements: [
+        "Tweet gameplay screenshots or achievements",
+        "Explain why our mechanics are sustainable",
+        "Include #GameFiAlliance hashtag",
+        "Tag the official GameFi Alliance account",
+        "Posts must demonstrate genuine gameplay engagement",
+      ],
+      tags: [
+        "GameFi",
+        "Play-to-Earn",
+        "Gaming",
+        "Tokenomics",
+        "Web3 Gaming",
+      ],
+      community: "GameFi Alliance",
+      socialHandle: "@gamefi_alliance",
+      maxSubmissionsPerUser: 5,
+      verificationMethod: "auto",
+    },
     submissions: [
       {
         id: "s3-1",

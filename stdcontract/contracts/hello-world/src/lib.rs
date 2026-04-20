@@ -29,6 +29,11 @@ pub struct Campaign {
     pub total_views: u64,
     pub results_finalized: bool,
     pub submissions: Vec<Submission>,
+    // ─── Metadata fields ──────────────────────────
+    pub description: String,
+    pub category: String,
+    pub image_url: String,
+    pub verification_method: String, // "twitter-link", "manual", "auto"
 }
 
 #[contracttype]
@@ -66,6 +71,10 @@ impl CampaignFactory {
         token_address: Address,
         duration: u64,
         total_budget: i128,
+        description: String,
+        category: String,
+        image_url: String,
+        verification_method: String,
     ) -> u32 {
         brand.require_auth();
 
@@ -91,6 +100,10 @@ impl CampaignFactory {
             total_views: 0,
             results_finalized: false,
             submissions: Vec::new(&env),
+            description,
+            category,
+            image_url,
+            verification_method,
         };
 
         env.storage()
