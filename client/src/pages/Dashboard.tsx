@@ -27,6 +27,7 @@ const DURATION_OPTIONS = [
   { label: "3 minutes", value: "3" },
   { label: "5 minutes", value: "5" },
   { label: "10 minutes", value: "10" },
+  { label: "1 day", value: "1440" },
 ] as const;
 
 export function Dashboard() {
@@ -121,7 +122,7 @@ export function Dashboard() {
     }
 
     if (!Number.isFinite(normalizedMinutes) || normalizedMinutes <= 0) {
-      setCreateFeedback("Select a campaign duration of 2, 3, 5, or 10 minutes.");
+      setCreateFeedback("Select a campaign duration of 2, 3, 5, 10 minutes, or 1 day.");
       return;
     }
 
